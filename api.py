@@ -1,11 +1,12 @@
-from flask import Flask, request, abort
+from flask import Flask, request, abort, jsonify
 from random import randint
 
+import os
 import re
 import uuid
 
 
-ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+ALLOWED_EXTENSIONS = set(["png", "jpg", "jpeg", "gif"])
 
 app = Flask(__name__)
 
@@ -14,24 +15,18 @@ app = Flask(__name__)
 def alive():
     """
     This function checks the running API status.
-    It will return the "Alive!" string if the API is well running.
 
-    get:
-        summary: status endpoint
-        description: Check the API status
-        parameters:
-            None
-        responses:
-            200:
-                The "Alive!" string
+    Return the "Alive!" string if the API is well running.
     """
-    return "Alive!"
+    return jsonify(status="Alive!")
 
 
 @app.route("/login", methods=["POST"])
 def login():
     """
     This function allows you to login to the API.
+
+    Return a confirmation message with the username and the password length
     """
     # Test the resquest body
     if (
@@ -45,14 +40,21 @@ def login():
     user = request.json["username"]
     pwd = request.json["password"]
 
-    return f"Login success for user {user} with password of length: {len(pwd)}!!"
+    return jsonify(
+        status=f"Login success for user {user} with password of length: {len(pwd)}!!"
+    )
 
 
 @app.route(
     "/predict/<int:seller_avaible>/<string:month>/<int:customer_visiting_website>"
 )
 def predict(seller_avaible: int, month: str, customer_visiting_website: int):
-    return str(randint(2000, 5000))
+    """
+    This function allows you to get a prediction.
+
+    Return a fake prediction which is a random int [2000, 5000]
+    """
+    return jsonify(prediction=randint(2000, 5000))
 
 
 def save_image(binary_img: bytes, extension: str):
@@ -65,12 +67,18 @@ def save_image(binary_img: bytes, extension: str):
 
 @app.route("/img/add", methods=["POST"])
 def add_image():
+    """
+    This function allows you to upload an image to the server.
+
+    Return the url server path
+    """
     img = request.data
     ext = re.findall("[a-z]+$", request.content_type)[0]
     if ext not in ALLOWED_EXTENSIONS:
         abort(400)
-    return save_image(img, ext)
+    return jsonify(server_path=save_image(img, ext))
 
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
